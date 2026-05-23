@@ -77,7 +77,7 @@ _Screenshots coming soon._
 ### Run from source
 
 ```bash
-git clone https://github.com/YOUR_ORG/skill-wrangler.git
+git clone https://github.com/shiftynick/skill-wrangler.git
 cd skill-wrangler
 npm install
 npm run tauri dev
