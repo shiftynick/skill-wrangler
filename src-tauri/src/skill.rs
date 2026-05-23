@@ -4,6 +4,37 @@ use std::path::Path;
 
 const CONTEXT_DIRS: &[&str] = &[".claude", ".agents", ".cursor"];
 
+/// Agent/IDE dot-directories whose `{root}/skills` folder is a known copy target.
+pub const AGENT_SKILL_ROOTS: &[&str] = &[
+    ".claude",
+    ".agents",
+    ".cursor",
+    ".windsurf",
+    ".codex",
+    ".gemini",
+    ".goose",
+    ".continue",
+];
+
+/// True when `dir` is a canonical agent skills folder, e.g. `.agents/skills`.
+pub fn is_known_agent_skills_dir(dir: &Path) -> bool {
+    let Some(folder_name) = dir.file_name().and_then(|n| n.to_str()) else {
+        return false;
+    };
+    if !folder_name.eq_ignore_ascii_case("skills") {
+        return false;
+    }
+    let Some(parent) = dir.parent() else {
+        return false;
+    };
+    let Some(parent_name) = parent.file_name().and_then(|n| n.to_str()) else {
+        return false;
+    };
+    AGENT_SKILL_ROOTS
+        .iter()
+        .any(|root| parent_name.eq_ignore_ascii_case(root))
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SkillEntry {
@@ -222,6 +253,24 @@ Body line one.
         let (name, desc) = parse_skill_md(content, "broken");
         assert_eq!(name.as_deref(), Some("broken"));
         assert_eq!(desc.as_deref(), Some("Body line one."));
+    }
+
+    #[test]
+    fn is_known_agent_skills_dir_matches() {
+        use crate::skill::is_known_agent_skills_dir;
+
+        assert!(is_known_agent_skills_dir(Path::new(
+            r"C:\repo\.agents\skills"
+        )));
+        assert!(is_known_agent_skills_dir(Path::new(
+            r"C:\repo\.cursor\skills"
+        )));
+        assert!(!is_known_agent_skills_dir(Path::new(
+            r"C:\repo\.cursor\skills-cursor"
+        )));
+        assert!(!is_known_agent_skills_dir(Path::new(
+            r"C:\repo\custom\skills"
+        )));
     }
 
     #[test]

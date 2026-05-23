@@ -1,10 +1,9 @@
 use fs_extra::dir::{copy as copy_dir, CopyOptions};
 use serde::{Deserialize, Serialize};
-use std::fs;
 use std::path::{Path, PathBuf};
 use walkdir::WalkDir;
 
-use crate::skill::should_ignore_dir;
+use crate::skill::{is_known_agent_skills_dir, should_ignore_dir};
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
@@ -49,7 +48,7 @@ pub fn copy_skills(
     results
 }
 
-/// Directories under `root` whose immediate child folders contain SKILL.md.
+/// Known agent skill directories under `root`, e.g. `.agents/skills`, `.claude/skills`.
 pub fn find_skill_containers(root: &Path) -> Vec<PathBuf> {
     let mut containers = Vec::new();
 
@@ -57,7 +56,7 @@ pub fn find_skill_containers(root: &Path) -> Vec<PathBuf> {
         return containers;
     }
 
-    if is_skill_container(root) {
+    if is_known_agent_skills_dir(root) {
         containers.push(normalize_path(root));
     }
 
@@ -80,7 +79,7 @@ pub fn find_skill_containers(root: &Path) -> Vec<PathBuf> {
             continue;
         }
         let path = entry.path();
-        if is_skill_container(path) {
+        if is_known_agent_skills_dir(path) {
             containers.push(normalize_path(path));
         }
     }
@@ -101,19 +100,6 @@ fn resolve_copy_destinations(root: &Path, copy_to_all_skill_folders: bool) -> Ve
     } else {
         containers
     }
-}
-
-fn is_skill_container(dir: &Path) -> bool {
-    let Ok(read_dir) = fs::read_dir(dir) else {
-        return false;
-    };
-    for child in read_dir.flatten() {
-        let child_path = child.path();
-        if child_path.is_dir() && child_path.join("SKILL.md").is_file() {
-            return true;
-        }
-    }
-    false
 }
 
 fn normalize_path(path: &Path) -> PathBuf {
@@ -302,6 +288,28 @@ mod tests {
 
         let containers = find_skill_containers(&repo);
         assert_eq!(containers.len(), 2);
+    }
+
+    #[test]
+    fn ignores_non_agent_skills_folders() {
+        let tmp = TempDir::new().unwrap();
+        let repo = tmp.path().join("some-repo");
+        let generic = repo.join("custom").join("skills");
+        make_skill(&generic, "existing");
+
+        let containers = find_skill_containers(&repo);
+        assert!(containers.is_empty());
+    }
+
+    #[test]
+    fn finds_cursor_skills_folder() {
+        let tmp = TempDir::new().unwrap();
+        let repo = tmp.path().join("some-repo");
+        let cursor = repo.join(".cursor").join("skills");
+        fs::create_dir_all(&cursor).unwrap();
+
+        let containers = find_skill_containers(&repo);
+        assert_eq!(containers.len(), 1);
     }
 
     #[test]

@@ -74,14 +74,15 @@
       checked={appState.copyToAllSkillFolders}
       onchange={(e) => setCopyToAllSkillFolders(e.currentTarget.checked)}
     />
-    <span>Copy to all skill folders under destination</span>
+    <span>Copy to all agent skill folders under destination</span>
   </label>
   {#if appState.copyToAllSkillFolders && appState.destination}
     <p class="subhint">
+      Looks for `.claude/skills`, `.agents/skills`, `.cursor/skills`, and similar agent paths.
       {#if appState.discoveredSkillContainers.length === 0}
-        No skill folders found yet — will copy into the destination root.
+        None found — will copy into the destination root.
       {:else}
-        Found {appState.discoveredSkillContainers.length} skill folder{appState.discoveredSkillContainers.length === 1 ? "" : "s"}:
+        Found {appState.discoveredSkillContainers.length}:
       {/if}
     </p>
     {#if appState.discoveredSkillContainers.length > 0}
