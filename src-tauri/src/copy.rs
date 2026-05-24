@@ -1,9 +1,9 @@
 use fs_extra::dir::{copy as copy_dir, CopyOptions};
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
-use walkdir::WalkDir;
 
-use crate::skill::{is_known_agent_skills_dir, should_ignore_dir};
+use crate::skill::{default_ignore_patterns, is_known_agent_skills_dir};
+use crate::walk::walk_filtered;
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
@@ -60,21 +60,8 @@ pub fn find_skill_containers(root: &Path) -> Vec<PathBuf> {
         containers.push(normalize_path(root));
     }
 
-    let walker = WalkDir::new(root)
-        .follow_links(false)
-        .into_iter()
-        .filter_entry(|entry| {
-            if entry.depth() == 0 {
-                return true;
-            }
-            if let Some(name) = entry.file_name().to_str() {
-                !should_ignore_dir(name, &[])
-            } else {
-                true
-            }
-        });
-
-    for entry in walker.flatten() {
+    let ignores = default_ignore_patterns();
+    for entry in walk_filtered(root, &ignores).flatten() {
         if !entry.file_type().is_dir() || entry.depth() == 0 {
             continue;
         }

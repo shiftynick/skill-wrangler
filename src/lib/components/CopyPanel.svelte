@@ -1,11 +1,13 @@
 <script lang="ts">
   import { open } from "@tauri-apps/plugin-dialog";
+  import { relativeToRoot } from "../path";
   import {
-    appState,
+    copyState,
     copySelected,
     setCopyToAllSkillFolders,
     setDestination,
-  } from "../stores/app.svelte";
+  } from "../stores/copy.svelte";
+  import { scanState } from "../stores/scan.svelte";
   import type { ConflictPolicy } from "../types";
 
   const conflictOptions: { value: ConflictPolicy; label: string }[] = [
@@ -32,15 +34,6 @@
   function statusClass(status: string): string {
     return `log-${status}`;
   }
-
-  function relativeDest(fullPath: string): string {
-    const root = appState.destination.replace(/\\/g, "/").replace(/\/$/, "");
-    const norm = fullPath.replace(/\\/g, "/");
-    if (norm.toLowerCase().startsWith(root.toLowerCase())) {
-      return norm.slice(root.length).replace(/^\//, "") || fullPath;
-    }
-    return fullPath;
-  }
 </script>
 
 <section class="panel-section">
@@ -51,16 +44,16 @@
     <input
       type="text"
       readonly
-      value={appState.destination}
+      value={copyState.destination}
       placeholder="No destination selected"
     />
     <button type="button" onclick={pickDestination}>Browse</button>
   </div>
 
-  {#if appState.recentDestinations.length > 0}
+  {#if copyState.recentDestinations.length > 0}
     <div class="recent">
       <span class="label">Recent:</span>
-      {#each appState.recentDestinations.slice(0, 5) as path}
+      {#each copyState.recentDestinations.slice(0, 5) as path}
         <button type="button" class="chip" onclick={() => pickRecent(path)} title={path}>
           {path.split(/[/\\]/).pop() ?? path}
         </button>
@@ -71,24 +64,24 @@
   <label class="checkbox-field">
     <input
       type="checkbox"
-      checked={appState.copyToAllSkillFolders}
+      checked={copyState.copyToAllSkillFolders}
       onchange={(e) => setCopyToAllSkillFolders(e.currentTarget.checked)}
     />
     <span>Copy to all agent skill folders under destination</span>
   </label>
-  {#if appState.copyToAllSkillFolders && appState.destination}
+  {#if copyState.copyToAllSkillFolders && copyState.destination}
     <p class="subhint">
-      Looks for `.claude/skills`, `.agents/skills`, `.cursor/skills`, and similar agent paths.
-      {#if appState.discoveredSkillContainers.length === 0}
+      Looks for known agent `skills` paths (e.g. `.agents/skills`, `.windsurf/skills`).
+      {#if copyState.discoveredSkillContainers.length === 0}
         None found — will copy into the destination root.
       {:else}
-        Found {appState.discoveredSkillContainers.length}:
+        Found {copyState.discoveredSkillContainers.length}:
       {/if}
     </p>
-    {#if appState.discoveredSkillContainers.length > 0}
+    {#if copyState.discoveredSkillContainers.length > 0}
       <ul class="container-list">
-        {#each appState.discoveredSkillContainers as container}
-          <li title={container}>{relativeDest(container)}</li>
+        {#each copyState.discoveredSkillContainers as container}
+          <li title={container}>{relativeToRoot(container, copyState.destination)}</li>
         {/each}
       </ul>
     {/if}
@@ -96,7 +89,7 @@
 
   <label class="field">
     <span>On conflict</span>
-    <select bind:value={appState.conflictPolicy}>
+    <select bind:value={copyState.conflictPolicy}>
       {#each conflictOptions as opt}
         <option value={opt.value}>{opt.label}</option>
       {/each}
@@ -106,23 +99,23 @@
   <button
     type="button"
     class="primary copy-btn"
-    disabled={appState.copying || appState.selectedIds.size === 0}
+    disabled={copyState.copying || scanState.selectedIds.size === 0}
     onclick={copySelected}
   >
-    {appState.copying
+    {copyState.copying
       ? "Copying…"
-      : `Copy ${appState.selectedIds.size} skill(s)`}
+      : `Copy ${scanState.selectedIds.size} skill(s)`}
   </button>
 
-  {#if appState.copyLog.length > 0}
+  {#if copyState.copyLog.length > 0}
     <div class="log">
       <h3>Results</h3>
       <ul>
-        {#each appState.copyLog as result}
+        {#each copyState.copyLog as result}
           <li class={statusClass(result.status)}>
             <span class="status">{result.status}</span>
             <span class="dest" title={result.destination}>
-              {relativeDest(result.destination)}
+              {relativeToRoot(result.destination, copyState.destination)}
             </span>
             {#if result.message}
               <span class="msg">{result.message}</span>

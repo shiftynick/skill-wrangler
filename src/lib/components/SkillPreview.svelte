@@ -1,27 +1,26 @@
 <script lang="ts">
   import {
-    appState,
     formatBytes,
-    getDisplayName,
+    previewState,
     selectPreviewFile,
-  } from "../stores/app.svelte";
+  } from "../stores/preview.svelte";
 </script>
 
 <section class="panel-section preview-section">
   <h2>Preview</h2>
-  {#if appState.previewSkill}
+  {#if previewState.previewSkill}
     <div class="meta">
-      <strong>{getDisplayName(appState.previewSkill)}</strong>
-      {#if appState.previewSkill.variantLabel}
-        <span class="variant">{appState.previewSkill.variantLabel}</span>
+      <strong>{previewState.previewSkill.folderName}</strong>
+      {#if previewState.previewSkill.variantLabel}
+        <span class="variant">{previewState.previewSkill.variantLabel}</span>
       {/if}
-      <span class="path">{appState.previewSkill.path}</span>
+      <span class="path">{previewState.previewSkill.path}</span>
     </div>
-    {#if appState.previewSkill.allPaths.length > 1}
+    {#if previewState.previewSkill.allPaths.length > 1}
       <div class="paths-block">
         <span class="paths-label">All copies:</span>
         <ul class="paths">
-          {#each appState.previewSkill.allPaths as p}
+          {#each previewState.previewSkill.allPaths as p}
             <li>{p}</li>
           {/each}
         </ul>
@@ -31,17 +30,17 @@
     <div class="preview-layout">
       <div class="file-list">
         <h3>Files</h3>
-        {#if appState.previewFilesLoading}
+        {#if previewState.previewFilesLoading}
           <p class="hint">Loading files…</p>
-        {:else if appState.previewFiles.length === 0}
+        {:else if previewState.previewFiles.length === 0}
           <p class="hint">No files found</p>
         {:else}
           <ul>
-            {#each appState.previewFiles as file (file.absolutePath)}
+            {#each previewState.previewFiles as file (file.absolutePath)}
               <li>
                 <button
                   type="button"
-                  class:active={appState.selectedPreviewFile?.absolutePath ===
+                  class:active={previewState.selectedPreviewFile?.absolutePath ===
                     file.absolutePath}
                   onclick={() => selectPreviewFile(file)}
                 >
@@ -57,18 +56,18 @@
       </div>
 
       <div class="file-content">
-        {#if appState.selectedPreviewFile}
+        {#if previewState.selectedPreviewFile}
           <div class="content-header">
-            <span>{appState.selectedPreviewFile.relativePath}</span>
-            {#if appState.previewTruncated}
+            <span>{previewState.selectedPreviewFile.relativePath}</span>
+            {#if previewState.previewTruncated}
               <span class="truncated">truncated</span>
             {/if}
           </div>
         {/if}
-        {#if appState.previewContentLoading}
+        {#if previewState.previewContentLoading}
           <pre class="preview">Loading…</pre>
         {:else}
-          <pre class="preview">{appState.previewContent || "Select a file to view"}</pre>
+          <pre class="preview">{previewState.previewContent || "Select a file to view"}</pre>
         {/if}
       </div>
     </div>

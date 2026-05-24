@@ -1,10 +1,10 @@
-use crate::folder::{group_skills, SkillListItem};
-use crate::skill::{build_skill_entry, should_ignore_dir};
+use crate::group::{group_skills, SkillListItem};
+use crate::skill::build_skill_entry;
+use crate::walk::walk_filtered;
 use serde::Serialize;
 use std::path::Path;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
-use walkdir::WalkDir;
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -14,6 +14,30 @@ pub struct ScanComplete {
     pub elapsed_ms: u64,
     pub errors: Vec<String>,
     pub cancelled: bool,
+}
+
+fn finish_scan(
+    raw_skills: Vec<crate::skill::SkillEntry>,
+    dirs_visited: u64,
+    start: std::time::Instant,
+    mut errors: Vec<String>,
+    cancelled: bool,
+) -> ScanComplete {
+    let skills = match group_skills(raw_skills) {
+        Ok(grouped) => grouped,
+        Err(e) => {
+            errors.push(e);
+            Vec::new()
+        }
+    };
+
+    ScanComplete {
+        skills,
+        dirs_visited,
+        elapsed_ms: start.elapsed().as_millis() as u64,
+        errors,
+        cancelled,
+    }
 }
 
 pub fn scan_skills(
@@ -26,29 +50,9 @@ pub fn scan_skills(
     let mut errors = Vec::new();
     let mut dirs_visited: u64 = 0;
 
-    let walker = WalkDir::new(root)
-        .follow_links(false)
-        .into_iter()
-        .filter_entry(|entry| {
-            if entry.depth() == 0 {
-                return true;
-            }
-            if let Some(name) = entry.file_name().to_str() {
-                !should_ignore_dir(name, ignore_patterns)
-            } else {
-                true
-            }
-        });
-
-    for entry in walker {
+    for entry in walk_filtered(root, ignore_patterns) {
         if cancel.load(Ordering::Relaxed) {
-            return ScanComplete {
-                skills: Vec::new(),
-                dirs_visited,
-                elapsed_ms: start.elapsed().as_millis() as u64,
-                errors,
-                cancelled: true,
-            };
+            return finish_scan(raw_skills, dirs_visited, start, errors, true);
         }
 
         let entry = match entry {
@@ -77,21 +81,7 @@ pub fn scan_skills(
         }
     }
 
-    let skills = match group_skills(raw_skills) {
-        Ok(grouped) => grouped,
-        Err(e) => {
-            errors.push(e);
-            Vec::new()
-        }
-    };
-
-    ScanComplete {
-        skills,
-        dirs_visited,
-        elapsed_ms: start.elapsed().as_millis() as u64,
-        errors,
-        cancelled: false,
-    }
+    finish_scan(raw_skills, dirs_visited, start, errors, false)
 }
 
 #[cfg(test)]
@@ -163,22 +153,26 @@ mod tests {
     }
 
     #[test]
+    fn cancelled_scan_keeps_collected_skills() {
+        use crate::skill::build_skill_entry;
+
+        let tmp = TempDir::new().unwrap();
+        write_skill(tmp.path(), "partial-skill", "Body");
+        let entry = build_skill_entry(&tmp.path().join("partial-skill")).unwrap();
+
+        let result = finish_scan(vec![entry], 42, std::time::Instant::now(), vec![], true);
+
+        assert!(result.cancelled);
+        assert_eq!(result.skills.len(), 1);
+        assert_eq!(result.skills[0].folder_name, "partial-skill");
+        assert_eq!(result.dirs_visited, 42);
+    }
+
+    #[test]
     fn is_recycle_bin_dir_matches() {
         assert!(crate::skill::is_recycle_bin_dir("$Recycle.Bin"));
         assert!(crate::skill::is_recycle_bin_dir("$recycle.bin"));
         assert!(crate::skill::is_recycle_bin_dir(".Trash"));
         assert!(!crate::skill::is_recycle_bin_dir("skills"));
-    }
-
-    #[test]
-    #[ignore = "manual diagnostic against user profile"]
-    fn diagnostic_scan_user_profile() {
-        use crate::skill::default_ignore_patterns;
-        let home = std::env::var("USERPROFILE").expect("USERPROFILE");
-        let cancel = Arc::new(AtomicBool::new(false));
-        let result = scan_skills(std::path::Path::new(&home), &default_ignore_patterns(), cancel);
-        eprintln!("skills_found={}", result.skills.len());
-        eprintln!("dirs_visited={}", result.dirs_visited);
-        eprintln!("errors={}", result.errors.len());
     }
 }

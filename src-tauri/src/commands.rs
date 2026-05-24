@@ -1,7 +1,7 @@
 use crate::copy::{copy_skills, ConflictPolicy, CopyResult};
-use crate::folder::{list_folder_files, read_folder_file};
+use crate::folder::{list_folder_files, read_folder_file, FolderFileInfo};
 use crate::scan::scan_skills;
-use crate::skill::default_ignore_patterns;
+use crate::skill::{default_ignore_patterns, AGENT_SKILL_ROOTS};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -9,15 +9,6 @@ use std::sync::{Arc, Mutex};
 use tauri::{AppHandle, Emitter, State};
 
 const STORE_PATH: &str = "settings.json";
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct FolderFileInfo {
-    pub relative_path: String,
-    pub absolute_path: String,
-    pub size_bytes: u64,
-    pub is_binary: bool,
-}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -33,19 +24,16 @@ pub struct AppSettings {
     pub scan_root: Option<String>,
     pub recent_destinations: Vec<String>,
     pub ignore_patterns: Vec<String>,
+    pub agent_skill_roots: Vec<String>,
 }
 
 pub struct AppState {
-    pub scan_root: Mutex<Option<PathBuf>>,
-    pub ignore_patterns: Mutex<Vec<String>>,
     pub scan_cancel: Mutex<Option<Arc<AtomicBool>>>,
 }
 
 impl Default for AppState {
     fn default() -> Self {
         Self {
-            scan_root: Mutex::new(None),
-            ignore_patterns: Mutex::new(default_ignore_patterns()),
             scan_cancel: Mutex::new(None),
         }
     }
@@ -70,6 +58,7 @@ fn load_settings(app: &AppHandle) -> Result<AppSettings, String> {
             .get("ignorePatterns")
             .and_then(|v| serde_json::from_value(v.clone()).ok())
             .unwrap_or_else(default_ignore_patterns),
+        agent_skill_roots: AGENT_SKILL_ROOTS.iter().map(|s| s.to_string()).collect(),
     })
 }
 
@@ -94,41 +83,16 @@ fn save_settings(app: &AppHandle, settings: &AppSettings) -> Result<(), String> 
         .map_err(|e| format!("Failed to save settings: {e}"))
 }
 
-pub fn init_settings(app: &AppHandle, state: &AppState) {
-    if let Ok(settings) = load_settings(app) {
-        if let Some(ref root) = settings.scan_root {
-            if let Ok(mut scan_root) = state.scan_root.lock() {
-                *scan_root = Some(PathBuf::from(root));
-            }
-        }
-        if !settings.ignore_patterns.is_empty() {
-            if let Ok(mut ignores) = state.ignore_patterns.lock() {
-                *ignores = settings.ignore_patterns;
-            }
-        }
-    }
+#[tauri::command]
+pub fn get_scan_root(app: AppHandle) -> Result<Option<String>, String> {
+    Ok(load_settings(&app)?.scan_root)
 }
 
 #[tauri::command]
-pub fn get_scan_root(state: State<'_, AppState>) -> Result<Option<String>, String> {
-    let root = state.scan_root.lock().map_err(|e| e.to_string())?;
-    Ok(root.as_ref().map(|p| p.to_string_lossy().to_string()))
-}
-
-#[tauri::command]
-pub fn set_scan_root(
-    app: AppHandle,
-    state: State<'_, AppState>,
-    path: String,
-) -> Result<(), String> {
+pub fn set_scan_root(app: AppHandle, path: String) -> Result<(), String> {
     let path_buf = PathBuf::from(&path);
     if !path_buf.is_dir() {
         return Err(format!("Not a directory: {path}"));
-    }
-
-    {
-        let mut root = state.scan_root.lock().map_err(|e| e.to_string())?;
-        *root = Some(path_buf);
     }
 
     let mut settings = load_settings(&app)?;
@@ -137,20 +101,13 @@ pub fn set_scan_root(
 }
 
 #[tauri::command]
-pub fn get_settings(app: AppHandle, state: State<'_, AppState>) -> Result<AppSettings, String> {
-    let settings = load_settings(&app)?;
+pub fn get_settings(app: AppHandle) -> Result<AppSettings, String> {
+    load_settings(&app)
+}
 
-    if let Some(ref root) = settings.scan_root {
-        let mut scan_root = state.scan_root.lock().map_err(|e| e.to_string())?;
-        *scan_root = Some(PathBuf::from(root));
-    }
-
-    if !settings.ignore_patterns.is_empty() {
-        let mut ignores = state.ignore_patterns.lock().map_err(|e| e.to_string())?;
-        *ignores = settings.ignore_patterns.clone();
-    }
-
-    Ok(settings)
+#[tauri::command]
+pub fn get_agent_skill_roots() -> Vec<String> {
+    AGENT_SKILL_ROOTS.iter().map(|s| s.to_string()).collect()
 }
 
 #[tauri::command]
@@ -164,17 +121,12 @@ pub fn add_recent_destination(app: AppHandle, path: String) -> Result<(), String
 
 #[tauri::command]
 pub async fn start_scan(app: AppHandle, state: State<'_, AppState>) -> Result<(), String> {
-    let root = {
-        let root_guard = state.scan_root.lock().map_err(|e| e.to_string())?;
-        root_guard
-            .clone()
-            .ok_or_else(|| "No scan root set".to_string())?
-    };
-
-    let ignore_patterns = {
-        let ignores = state.ignore_patterns.lock().map_err(|e| e.to_string())?;
-        ignores.clone()
-    };
+    let settings = load_settings(&app)?;
+    let root = settings
+        .scan_root
+        .ok_or_else(|| "No scan root set".to_string())?;
+    let root = PathBuf::from(root);
+    let ignore_patterns = settings.ignore_patterns;
 
     let cancel_flag = Arc::new(AtomicBool::new(false));
     {
@@ -229,16 +181,7 @@ pub fn find_skill_containers_command(root: String) -> Result<Vec<String>, String
 
 #[tauri::command]
 pub fn list_skill_files_command(skill_path: String) -> Result<Vec<FolderFileInfo>, String> {
-    let files = list_folder_files(&PathBuf::from(&skill_path)).map_err(|e| e.to_string())?;
-    Ok(files
-        .into_iter()
-        .map(|f| FolderFileInfo {
-            relative_path: f.relative_path,
-            absolute_path: f.absolute_path,
-            size_bytes: f.size_bytes,
-            is_binary: f.is_binary,
-        })
-        .collect())
+    list_folder_files(&PathBuf::from(&skill_path)).map_err(|e| e.to_string())
 }
 
 #[tauri::command]

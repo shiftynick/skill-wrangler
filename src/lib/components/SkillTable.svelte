@@ -1,24 +1,17 @@
 <script lang="ts">
   import {
-    appState,
     clearSelection,
-    getDisplayName,
+    getContextFilterOptions,
     getFilteredSkills,
+    scanState,
     selectAllFiltered,
-    selectSkillForPreview,
     toggleSelection,
-  } from "../stores/app.svelte";
-  import type { ContextFilter } from "../types";
+  } from "../stores/scan.svelte";
+  import { previewState, selectSkillForPreview } from "../stores/preview.svelte";
+  import { uiState } from "../stores/ui.svelte";
 
   const filteredSkills = $derived(getFilteredSkills());
-
-  const contextOptions: { value: ContextFilter; label: string }[] = [
-    { value: "all", label: "All" },
-    { value: "claude", label: ".claude" },
-    { value: "agents", label: ".agents" },
-    { value: "cursor", label: ".cursor" },
-    { value: "other", label: "Other" },
-  ];
+  const contextOptions = $derived(getContextFilterOptions());
 
   function handleKeydown(e: KeyboardEvent) {
     if ((e.ctrlKey || e.metaKey) && e.key === "a") {
@@ -35,37 +28,37 @@
     <input
       type="search"
       placeholder="Search skills…"
-      bind:value={appState.searchQuery}
+      bind:value={scanState.searchQuery}
     />
-    <select bind:value={appState.contextFilter}>
+    <select bind:value={scanState.contextFilter}>
       {#each contextOptions as opt}
         <option value={opt.value}>{opt.label}</option>
       {/each}
     </select>
     <label class="compact-toggle" title="Show skill names only">
-      <input type="checkbox" bind:checked={appState.compactList} />
+      <input type="checkbox" bind:checked={uiState.compactList} />
       Compact
     </label>
     <button type="button" class="ghost" onclick={selectAllFiltered}>Select all</button>
     <button type="button" class="ghost" onclick={clearSelection}>Clear</button>
-    <span class="count">{appState.selectedIds.size} selected · {filteredSkills.length} skills</span>
+    <span class="count">{scanState.selectedIds.size} selected · {filteredSkills.length} skills</span>
   </div>
 
-  {#if appState.scanning}
+  {#if scanState.scanning}
     <div class="empty">Scanning filesystem…</div>
-  {:else if !appState.scanRoot}
+  {:else if !scanState.scanRoot}
     <div class="empty">Choose a scan root to begin</div>
   {:else if filteredSkills.length === 0}
     <div class="empty">No skills match your filters</div>
   {:else}
-    <div class="list-wrap" class:compact={appState.compactList}>
+    <div class="list-wrap" class:compact={uiState.compactList}>
       <ul class="skill-list">
         {#each filteredSkills as skill (skill.id)}
           <li
-            class:selected={appState.selectedIds.has(skill.id)}
-            class:active={appState.previewSkill?.id === skill.id}
-            class:compact={appState.compactList}
-            title={appState.compactList
+            class:selected={scanState.selectedIds.has(skill.id)}
+            class:active={previewState.previewSkill?.id === skill.id}
+            class:compact={uiState.compactList}
+            title={uiState.compactList
               ? [skill.variantLabel, skill.description, skill.parentContext]
                   .filter(Boolean)
                   .join(" · ")
@@ -73,18 +66,18 @@
           >
             <input
               type="checkbox"
-              checked={appState.selectedIds.has(skill.id)}
+              checked={scanState.selectedIds.has(skill.id)}
               onclick={(e) => e.stopPropagation()}
               onchange={() => toggleSelection(skill.id)}
             />
             <button
               type="button"
               class="skill-btn"
-              class:compact={appState.compactList}
+              class:compact={uiState.compactList}
               onclick={() => selectSkillForPreview(skill)}
             >
-              <span class="name">{getDisplayName(skill)}</span>
-              {#if !appState.compactList}
+              <span class="name">{skill.folderName}</span>
+              {#if !uiState.compactList}
                 {#if skill.variantLabel}
                   <span class="variant">{skill.variantLabel}</span>
                 {/if}

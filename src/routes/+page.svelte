@@ -3,17 +3,13 @@
   import RootPicker from "$lib/components/RootPicker.svelte";
   import SkillPreview from "$lib/components/SkillPreview.svelte";
   import SkillTable from "$lib/components/SkillTable.svelte";
-  import { appState } from "$lib/stores/app.svelte";
+  import { uiState } from "$lib/stores/ui.svelte";
 </script>
 
 <div class="app">
-  <header class="header">
-    <h1>Skill Wrangler</h1>
-    <p>Discover and copy agent skills (SKILL.md folders)</p>
-  </header>
 
-  {#if appState.error}
-    <div class="error-banner" role="alert">{appState.error}</div>
+  {#if uiState.error}
+    <div class="error-banner" role="alert">{uiState.error}</div>
   {/if}
 
   <main class="layout">
@@ -40,23 +36,6 @@
     padding: 1rem 1.25rem;
     gap: 0.75rem;
     overflow: hidden;
-  }
-
-  .header {
-    flex-shrink: 0;
-  }
-
-  .header h1 {
-    margin: 0;
-    font-size: 1.35rem;
-    font-weight: 700;
-    letter-spacing: -0.02em;
-  }
-
-  .header p {
-    margin: 0.15rem 0 0;
-    font-size: 0.85rem;
-    color: var(--text-muted);
   }
 
   .layout {

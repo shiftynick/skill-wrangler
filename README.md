@@ -28,7 +28,7 @@ Skill Wrangler gives you one place to:
 - **Recursive scan** from any root folder (home directory, a repo, a drive)
 - **Alphabetical skill list** grouped by folder name
 - **Content-aware deduplication** — same name + identical files merge into one entry; different contents show as separate variants
-- **Context filters** for `.claude`, `.agents`, `.cursor`, and other locations
+- **Context filters** for each supported agent path (`.claude`, `.agents`, `.windsurf`, …) plus “other”
 - **Compact mode** for a names-only list when you're scanning hundreds of skills
 - **Search** across name, description, path, and context
 
@@ -108,7 +108,7 @@ Skills appear in an alphabetical list. Each entry is named after its **folder na
 - **Variants** appear when multiple folders share a name but have different file contents
 - **Identical copies** (same name, same content, different paths) collapse into one entry with a copy count
 - Toggle **Compact** for a dense names-only view
-- Filter by agent context (`.claude`, `.agents`, `.cursor`, …) or search by keyword
+- Filter by agent context (all supported agent roots) or search by keyword
 
 Select skills with the checkboxes, or press `Ctrl/Cmd+A` to select all filtered results.
 
@@ -190,13 +190,15 @@ skill-wrangler/
 ├── src/                      # Svelte frontend
 │   └── lib/
 │       ├── components/       # UI panels
-│       └── stores/           # App state
+│       └── stores/           # scan, preview, copy, ui state
 └── src-tauri/src/
     ├── skill.rs              # SKILL.md parsing, agent path rules
     ├── scan.rs               # Filesystem discovery
-    ├── folder.rs             # Content hashing, deduplication
+    ├── walk.rs               # Shared filtered directory walk
+    ├── group.rs              # Skill deduplication / grouping
+    ├── folder/               # Content hashing, file listing, read
     ├── copy.rs               # Copy engine + multi-destination logic
-    └── commands.rs           # Tauri command handlers
+    └── commands.rs           # Tauri command handlers (settings store)
 ```
 
 ---

@@ -3193,7 +3193,7 @@ checksum = "8ee5873ec9cce0195efcb7a4e9507a04cd49aec9c83d0389df45b1ef7ba2e649"
 
 [[package]]
 name = "skill-wrangler"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "fs_extra",
  "serde",
@@ -3206,7 +3206,6 @@ dependencies = [
  "tauri-plugin-opener",
  "tauri-plugin-store",
  "tempfile",
- "thiserror 2.0.18",
  "walkdir",
 ]
 

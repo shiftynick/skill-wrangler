@@ -34,9 +34,11 @@ export interface AppSettings {
   scanRoot: string | null;
   recentDestinations: string[];
   ignorePatterns: string[];
+  agentSkillRoots: string[];
 }
 
-export type ContextFilter = "all" | "claude" | "agents" | "cursor" | "other";
+/** `all`, `other`, or an agent key without leading dot (e.g. `claude`, `windsurf`). */
+export type ContextFilter = "all" | "other" | (string & {});
 
 export interface FolderFileInfo {
   relativePath: string;

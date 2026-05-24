@@ -1,11 +1,6 @@
 <script lang="ts">
   import { open } from "@tauri-apps/plugin-dialog";
-  import {
-    appState,
-    chooseScanRoot,
-    runScan,
-    stopScan,
-  } from "../stores/app.svelte";
+  import { chooseScanRoot, runScan, scanState, stopScan } from "../stores/scan.svelte";
 
   async function pickRoot() {
     const selected = await open({
@@ -27,7 +22,7 @@
     <input
       type="text"
       readonly
-      value={appState.scanRoot ?? ""}
+      value={scanState.scanRoot ?? ""}
       placeholder="No folder selected"
     />
     <button type="button" onclick={pickRoot}>Browse</button>
@@ -37,28 +32,28 @@
     <button
       type="button"
       class="primary"
-      disabled={!appState.scanRoot || appState.scanning}
+      disabled={!scanState.scanRoot || scanState.scanning}
       onclick={runScan}
     >
-      {appState.scanning ? "Scanning…" : "Rescan"}
+      {scanState.scanning ? "Scanning…" : "Rescan"}
     </button>
-    {#if appState.scanning}
+    {#if scanState.scanning}
       <button type="button" class="ghost" onclick={stopScan}>Cancel</button>
     {/if}
   </div>
 
-  {#if appState.scanStats}
+  {#if scanState.scanStats}
     <div class="stats">
-      <span>{appState.skills.length} skills</span>
-      <span>{appState.scanStats.dirsVisited} dirs</span>
-      <span>{(appState.scanStats.elapsedMs / 1000).toFixed(1)}s</span>
-      {#if appState.scanStats.cancelled}
+      <span>{scanState.skills.length} skills</span>
+      <span>{scanState.scanStats.dirsVisited} dirs</span>
+      <span>{(scanState.scanStats.elapsedMs / 1000).toFixed(1)}s</span>
+      {#if scanState.scanStats.cancelled}
         <span class="warn">cancelled</span>
       {/if}
     </div>
-    {#if appState.scanStats.errors.length > 0}
+    {#if scanState.scanStats.errors.length > 0}
       <p class="warn small">
-        {appState.scanStats.errors.length} warning(s) during scan
+        {scanState.scanStats.errors.length} warning(s) during scan
       </p>
     {/if}
   {/if}

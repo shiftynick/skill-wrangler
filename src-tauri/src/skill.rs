@@ -2,9 +2,8 @@ use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::path::Path;
 
-const CONTEXT_DIRS: &[&str] = &[".claude", ".agents", ".cursor"];
-
-/// Agent/IDE dot-directories whose `{root}/skills` folder is a known copy target.
+/// Agent/IDE dot-directories whose `{root}/skills` folder is a known copy target,
+/// and whose names appear in skill `parent_context` labels.
 pub const AGENT_SKILL_ROOTS: &[&str] = &[
     ".claude",
     ".agents",
@@ -40,7 +39,6 @@ pub fn is_known_agent_skills_dir(dir: &Path) -> bool {
 pub struct SkillEntry {
     pub id: String,
     pub folder_name: String,
-    pub name: Option<String>,
     pub description: Option<String>,
     pub path: String,
     pub skill_md_path: String,
@@ -112,7 +110,10 @@ pub fn parent_context(skill_path: &Path) -> String {
 
     for ancestor in skill_path.ancestors() {
         if let Some(name) = ancestor.file_name().and_then(|n| n.to_str()) {
-            if CONTEXT_DIRS.contains(&name) {
+            if AGENT_SKILL_ROOTS
+                .iter()
+                .any(|root| name.eq_ignore_ascii_case(root))
+            {
                 found_context = Some(name.to_string());
                 break;
             }
@@ -150,13 +151,12 @@ pub fn build_skill_entry(skill_dir: &Path) -> std::io::Result<SkillEntry> {
         .unwrap_or("unknown")
         .to_string();
 
-    let (name, description) = parse_skill_md(&content, &folder_name);
+    let (_name, description) = parse_skill_md(&content, &folder_name);
     let abs_path = skill_dir.canonicalize().unwrap_or_else(|_| skill_dir.to_path_buf());
 
     Ok(SkillEntry {
         id: skill_id(&abs_path),
         folder_name,
-        name,
         description,
         path: abs_path.to_string_lossy().to_string(),
         skill_md_path: skill_md_path.to_string_lossy().to_string(),
@@ -278,5 +278,12 @@ Body line one.
         let path = PathBuf::from(r"C:\Users\test\.agents\skills\find-skills");
         let ctx = parent_context(&path);
         assert_eq!(ctx, ".agents/skills/find-skills");
+    }
+
+    #[test]
+    fn parent_context_finds_windsurf() {
+        let path = PathBuf::from(r"C:\repo\.windsurf\skills\my-skill");
+        let ctx = parent_context(&path);
+        assert_eq!(ctx, ".windsurf/skills/my-skill");
     }
 }
