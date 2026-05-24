@@ -1,5 +1,6 @@
 import { listSkillFiles, readSkillFile } from "../api";
 import type { FolderFileInfo, SkillListItem } from "../types";
+import { clearDiffState, initCompareForSkill } from "./diff.svelte";
 
 export const previewState = $state({
   previewSkill: null as SkillListItem | null,
@@ -17,10 +18,12 @@ export function clearPreview(): void {
   previewState.selectedPreviewFile = null;
   previewState.previewContent = "";
   previewState.previewTruncated = false;
+  clearDiffState();
 }
 
 export async function selectSkillForPreview(skill: SkillListItem): Promise<void> {
   previewState.previewSkill = skill;
+  initCompareForSkill(skill);
   previewState.previewFilesLoading = true;
   previewState.previewFiles = [];
   previewState.selectedPreviewFile = null;

@@ -1,5 +1,6 @@
 mod commands;
 mod copy;
+mod diff;
 mod folder;
 mod group;
 mod scan;
@@ -9,7 +10,8 @@ mod walk;
 use commands::{
     add_recent_destination, cancel_scan, copy_skills_command, find_skill_containers_command,
     get_agent_skill_roots, get_scan_root, get_settings, init_agent_skills_folders,
-    list_skill_files_command, read_skill_file_command, set_scan_root, start_scan, AppState,
+    diff_skill_file_command, diff_skill_folders_command, list_skill_files_command,
+    read_skill_file_command, set_scan_root, start_scan, AppState,
 };
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -32,6 +34,8 @@ pub fn run() {
             find_skill_containers_command,
             list_skill_files_command,
             read_skill_file_command,
+            diff_skill_folders_command,
+            diff_skill_file_command,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

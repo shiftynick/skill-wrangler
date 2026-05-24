@@ -5,6 +5,8 @@ import type {
   CopyResult,
   FileContentResult,
   FolderFileInfo,
+  SkillFolderDiff,
+  TextFileDiff,
 } from "./types";
 
 export async function getScanRoot(): Promise<string | null> {
@@ -62,4 +64,19 @@ export async function readSkillFile(
 
 export async function initAgentSkillsFolders(destination: string): Promise<string[]> {
   return invoke("init_agent_skills_folders", { destination });
+}
+
+export async function diffSkillFolders(
+  leftPath: string,
+  rightPath: string,
+): Promise<SkillFolderDiff> {
+  return invoke("diff_skill_folders_command", { leftPath, rightPath });
+}
+
+export async function diffSkillFile(
+  leftPath: string,
+  rightPath: string,
+  relativePath: string,
+): Promise<TextFileDiff> {
+  return invoke("diff_skill_file_command", { leftPath, rightPath, relativePath });
 }

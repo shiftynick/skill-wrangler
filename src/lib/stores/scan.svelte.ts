@@ -143,3 +143,16 @@ export function selectAllFiltered(): void {
 export function clearSelection(): void {
   scanState.selectedIds = new Set();
 }
+
+export function getSkillById(id: string): SkillListItem | undefined {
+  return scanState.skills.find((s) => s.id === id);
+}
+
+/** All variant rows for the same folder name (including `skill`). */
+export function getVariantsFor(skill: SkillListItem): SkillListItem[] {
+  if (skill.siblingIds.length === 0) {
+    return [skill];
+  }
+  const ids = new Set([skill.id, ...skill.siblingIds]);
+  return scanState.skills.filter((s) => ids.has(s.id));
+}

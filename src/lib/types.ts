@@ -9,6 +9,39 @@ export interface SkillListItem {
   identicalCopyCount: number;
   allPaths: string[];
   variantLabel: string | null;
+  variantGroupId: string | null;
+  siblingIds: string[];
+}
+
+export type FileDiffStatus =
+  | "added"
+  | "removed"
+  | "unchanged"
+  | "modified"
+  | "binary_changed";
+
+export interface FileDiffEntry {
+  relativePath: string;
+  status: FileDiffStatus;
+  leftSizeBytes: number | null;
+  rightSizeBytes: number | null;
+}
+
+export interface SkillFolderDiff {
+  leftPath: string;
+  rightPath: string;
+  files: FileDiffEntry[];
+}
+
+export interface DiffLine {
+  tag: "equal" | "insert" | "delete" | string;
+  content: string;
+}
+
+export interface TextFileDiff {
+  relativePath: string;
+  truncated: boolean;
+  lines: DiffLine[];
 }
 
 export interface ScanComplete {

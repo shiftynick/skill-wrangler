@@ -1,14 +1,24 @@
+use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::fs;
 use std::io;
 use std::path::Path;
 
-use crate::walk::walk_filtered;
 use crate::skill::default_ignore_patterns;
+use crate::walk::walk_filtered;
 
-/// Hash of all files in a folder (relative path + per-file content hash), order-independent.
-pub fn compute_folder_content_hash(dir: &Path) -> io::Result<String> {
-    let mut file_hashes: Vec<(String, String)> = Vec::new();
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FileManifestEntry {
+    pub relative_path: String,
+    pub content_hash: String,
+    pub size_bytes: u64,
+    pub is_binary: bool,
+}
+
+/// Per-file manifest for a skill folder (relative path, hash, size, binary flag).
+pub fn build_folder_manifest(dir: &Path) -> io::Result<Vec<FileManifestEntry>> {
+    let mut entries = Vec::new();
     let ignores = default_ignore_patterns();
 
     for entry in walk_filtered(dir, &ignores).filter_map(|e| e.ok()) {
@@ -20,20 +30,45 @@ pub fn compute_folder_content_hash(dir: &Path) -> io::Result<String> {
             .strip_prefix(dir)
             .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
         let rel_str = rel.to_string_lossy().replace('\\', "/");
+        let meta = entry.metadata()?;
         let bytes = fs::read(entry.path())?;
-        file_hashes.push((rel_str, hash_bytes(&bytes)));
+        entries.push(FileManifestEntry {
+            relative_path: rel_str,
+            content_hash: hash_bytes(&bytes),
+            size_bytes: meta.len(),
+            is_binary: is_probably_binary_from_bytes(&bytes),
+        });
     }
 
-    file_hashes.sort_by(|a, b| a.0.cmp(&b.0));
+    entries.sort_by(|a, b| a.relative_path.cmp(&b.relative_path));
+    Ok(entries)
+}
 
+fn is_probably_binary_from_bytes(bytes: &[u8]) -> bool {
+    if bytes.is_empty() {
+        return false;
+    }
+    if bytes.contains(&0) {
+        return true;
+    }
+    let sample = &bytes[..bytes.len().min(8 * 1024)];
+    let non_text = sample
+        .iter()
+        .filter(|&&b| b != b'\n' && b != b'\r' && b != b'\t' && (b < 0x20 || b == 0x7F))
+        .count();
+    non_text * 10 > sample.len()
+}
+
+/// Hash of all files in a folder (relative path + per-file content hash), order-independent.
+pub fn compute_folder_content_hash(dir: &Path) -> io::Result<String> {
+    let manifest = build_folder_manifest(dir)?;
     let mut hasher = Sha256::new();
-    for (path, file_hash) in &file_hashes {
-        hasher.update(path.as_bytes());
+    for entry in &manifest {
+        hasher.update(entry.relative_path.as_bytes());
         hasher.update(b"\0");
-        hasher.update(file_hash.as_bytes());
+        hasher.update(entry.content_hash.as_bytes());
         hasher.update(b"\n");
     }
-
     Ok(short_hash(&hasher.finalize()))
 }
 

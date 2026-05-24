@@ -1,5 +1,20 @@
 export { copyState, copySelected, refreshSkillContainers, setCopyToAllSkillFolders, setDestination, loadCopySettings } from "./copy.svelte";
+export {
+  diffState,
+  clearDiffResults,
+  clearDiffState,
+  closeCompareModal,
+  getCompareVariants,
+  getVisibleDiffFiles,
+  initCompareForSkill,
+  isDiffableStatus,
+  openCompareModal,
+  runFolderDiff,
+  selectDiffFile,
+  statusLabel,
+} from "./diff.svelte";
 export { previewState, clearPreview, formatBytes, selectPreviewFile, selectSkillForPreview } from "./preview.svelte";
+export { getSkillById, getVariantsFor } from "./scan.svelte";
 export {
   scanState,
   chooseScanRoot,

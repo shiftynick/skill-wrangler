@@ -1,6 +1,7 @@
 <script lang="ts">
   import CopyPanel from "$lib/components/CopyPanel.svelte";
   import RootPicker from "$lib/components/RootPicker.svelte";
+  import SkillCompareModal from "$lib/components/SkillCompareModal.svelte";
   import SkillPreview from "$lib/components/SkillPreview.svelte";
   import SkillTable from "$lib/components/SkillTable.svelte";
   import { uiState } from "$lib/stores/ui.svelte";
@@ -26,6 +27,8 @@
       <SkillPreview />
     </aside>
   </main>
+
+  <SkillCompareModal />
 </div>
 
 <style>

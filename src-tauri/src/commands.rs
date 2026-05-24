@@ -1,4 +1,5 @@
 use crate::copy::{copy_skills, ConflictPolicy, CopyResult};
+use crate::diff::{diff_skill_file, diff_skill_folders, SkillFolderDiff, TextFileDiff};
 use crate::folder::{list_folder_files, read_folder_file, FolderFileInfo};
 use crate::scan::scan_skills;
 use crate::skill::{default_ignore_patterns, init_agent_skills_dirs, AGENT_SKILL_ROOTS};
@@ -206,4 +207,25 @@ pub fn read_skill_file_command(
         is_binary,
         truncated,
     })
+}
+
+#[tauri::command]
+pub fn diff_skill_folders_command(
+    left_path: String,
+    right_path: String,
+) -> Result<SkillFolderDiff, String> {
+    diff_skill_folders(&PathBuf::from(&left_path), &PathBuf::from(&right_path))
+}
+
+#[tauri::command]
+pub fn diff_skill_file_command(
+    left_path: String,
+    right_path: String,
+    relative_path: String,
+) -> Result<TextFileDiff, String> {
+    diff_skill_file(
+        &PathBuf::from(&left_path),
+        &PathBuf::from(&right_path),
+        &relative_path,
+    )
 }

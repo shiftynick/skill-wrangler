@@ -19,6 +19,8 @@ pub struct SkillListItem {
     pub identical_copy_count: u32,
     pub all_paths: Vec<String>,
     pub variant_label: Option<String>,
+    pub variant_group_id: Option<String>,
+    pub sibling_ids: Vec<String>,
 }
 
 struct ScoredEntry {
@@ -57,6 +59,7 @@ pub fn group_skills(entries: Vec<SkillEntry>) -> Result<Vec<SkillListItem>, Stri
         hash_groups.sort_by(|a, b| a.1[0].entry.path.cmp(&b.1[0].entry.path));
 
         let variant_count = hash_groups.len();
+        let mut group_items: Vec<SkillListItem> = Vec::new();
 
         for (variant_idx, (content_hash, instances)) in hash_groups.into_iter().enumerate() {
             let primary = instances[0].entry.clone();
@@ -78,7 +81,7 @@ pub fn group_skills(entries: Vec<SkillEntry>) -> Result<Vec<SkillListItem>, Stri
 
             let id = format!("{folder_name}:{content_hash}");
 
-            items.push(SkillListItem {
+            group_items.push(SkillListItem {
                 id,
                 folder_name: folder_name.clone(),
                 description: primary.description,
@@ -89,8 +92,25 @@ pub fn group_skills(entries: Vec<SkillEntry>) -> Result<Vec<SkillListItem>, Stri
                 identical_copy_count,
                 all_paths,
                 variant_label,
+                variant_group_id: None,
+                sibling_ids: Vec::new(),
             });
         }
+
+        if group_items.len() > 1 {
+            let variant_group_id = folder_name.to_ascii_lowercase();
+            let all_ids: Vec<String> = group_items.iter().map(|i| i.id.clone()).collect();
+            for item in &mut group_items {
+                item.variant_group_id = Some(variant_group_id.clone());
+                item.sibling_ids = all_ids
+                    .iter()
+                    .filter(|id| *id != &item.id)
+                    .cloned()
+                    .collect();
+            }
+        }
+
+        items.extend(group_items);
     }
 
     items.sort_by(|a, b| {
@@ -145,5 +165,8 @@ mod tests {
         let grouped = group_skills(entries).unwrap();
         assert_eq!(grouped.len(), 2);
         assert!(grouped.iter().all(|g| g.folder_name == "my-skill"));
+        assert!(grouped.iter().all(|g| g.variant_group_id.as_deref() == Some("my-skill")));
+        assert!(grouped[0].sibling_ids == vec![grouped[1].id.clone()]);
+        assert!(grouped[1].sibling_ids == vec![grouped[0].id.clone()]);
     }
 }

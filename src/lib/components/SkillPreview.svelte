@@ -1,9 +1,10 @@
 <script lang="ts">
   import {
     formatBytes,
+    openCompareModal,
     previewState,
     selectPreviewFile,
-  } from "../stores/preview.svelte";
+  } from "../stores/app.svelte";
 </script>
 
 <section class="panel-section preview-section">
@@ -16,6 +17,11 @@
       {/if}
       <span class="path">{previewState.previewSkill.path}</span>
     </div>
+    {#if previewState.previewSkill.siblingIds.length > 0}
+      <button type="button" class="compare-btn" onclick={() => openCompareModal()}>
+        Compare variants…
+      </button>
+    {/if}
     {#if previewState.previewSkill.allPaths.length > 1}
       <div class="paths-block">
         <span class="paths-label">All copies:</span>
@@ -87,6 +93,18 @@
   .meta {
     margin: 0 0 0.35rem;
     font-size: 0.8rem;
+  }
+
+  .compare-btn {
+    margin-bottom: 0.5rem;
+    width: 100%;
+    font-size: 0.8rem;
+    background: color-mix(in srgb, var(--accent) 12%, var(--surface-elevated));
+    border-color: var(--accent);
+  }
+
+  .compare-btn:hover {
+    background: color-mix(in srgb, var(--accent) 22%, var(--surface-elevated));
   }
 
   .paths-block {
