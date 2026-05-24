@@ -15,6 +15,24 @@ pub const AGENT_SKILL_ROOTS: &[&str] = &[
     ".continue",
 ];
 
+/// Agent roots created by "Initialize agent skills folders" (subset of [`AGENT_SKILL_ROOTS`]).
+pub const INIT_AGENT_SKILL_ROOTS: &[&str] = &[".claude", ".agents"];
+
+/// Creates `{destination}/{root}/skills` for each [`INIT_AGENT_SKILL_ROOTS`] entry (mkdir -p).
+pub fn init_agent_skills_dirs(destination: &Path) -> Result<Vec<std::path::PathBuf>, String> {
+    if !destination.is_dir() {
+        return Err(format!("Not a directory: {}", destination.display()));
+    }
+    let mut created = Vec::with_capacity(INIT_AGENT_SKILL_ROOTS.len());
+    for root in INIT_AGENT_SKILL_ROOTS {
+        let skills_dir = destination.join(root).join("skills");
+        std::fs::create_dir_all(&skills_dir)
+            .map_err(|e| format!("Failed to create {}: {e}", skills_dir.display()))?;
+        created.push(skills_dir);
+    }
+    Ok(created)
+}
+
 /// True when `dir` is a canonical agent skills folder, e.g. `.agents/skills`.
 pub fn is_known_agent_skills_dir(dir: &Path) -> bool {
     let Some(folder_name) = dir.file_name().and_then(|n| n.to_str()) else {
@@ -285,5 +303,26 @@ Body line one.
         let path = PathBuf::from(r"C:\repo\.windsurf\skills\my-skill");
         let ctx = parent_context(&path);
         assert_eq!(ctx, ".windsurf/skills/my-skill");
+    }
+
+    #[test]
+    fn init_agent_skills_dirs_creates_claude_and_agents() {
+        let temp = tempfile::tempdir().unwrap();
+        let created = init_agent_skills_dirs(temp.path()).unwrap();
+        assert_eq!(created.len(), INIT_AGENT_SKILL_ROOTS.len());
+        for root in INIT_AGENT_SKILL_ROOTS {
+            let skills = temp.path().join(root).join("skills");
+            assert!(skills.is_dir(), "missing {}", skills.display());
+        }
+        // Idempotent: second call should not fail.
+        init_agent_skills_dirs(temp.path()).unwrap();
+    }
+
+    #[test]
+    fn init_agent_skills_dirs_rejects_non_directory() {
+        let temp = tempfile::tempdir().unwrap();
+        let file = temp.path().join("not-a-dir");
+        std::fs::write(&file, b"x").unwrap();
+        assert!(init_agent_skills_dirs(&file).is_err());
     }
 }

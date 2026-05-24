@@ -8,8 +8,8 @@ mod walk;
 
 use commands::{
     add_recent_destination, cancel_scan, copy_skills_command, find_skill_containers_command,
-    get_agent_skill_roots, get_scan_root, get_settings, list_skill_files_command,
-    read_skill_file_command, set_scan_root, start_scan, AppState,
+    get_agent_skill_roots, get_scan_root, get_settings, init_agent_skills_folders,
+    list_skill_files_command, read_skill_file_command, set_scan_root, start_scan, AppState,
 };
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -24,6 +24,7 @@ pub fn run() {
             set_scan_root,
             get_settings,
             get_agent_skill_roots,
+            init_agent_skills_folders,
             add_recent_destination,
             start_scan,
             cancel_scan,

@@ -1,7 +1,7 @@
 use crate::copy::{copy_skills, ConflictPolicy, CopyResult};
 use crate::folder::{list_folder_files, read_folder_file, FolderFileInfo};
 use crate::scan::scan_skills;
-use crate::skill::{default_ignore_patterns, AGENT_SKILL_ROOTS};
+use crate::skill::{default_ignore_patterns, init_agent_skills_dirs, AGENT_SKILL_ROOTS};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -108,6 +108,15 @@ pub fn get_settings(app: AppHandle) -> Result<AppSettings, String> {
 #[tauri::command]
 pub fn get_agent_skill_roots() -> Vec<String> {
     AGENT_SKILL_ROOTS.iter().map(|s| s.to_string()).collect()
+}
+
+#[tauri::command]
+pub fn init_agent_skills_folders(destination: String) -> Result<Vec<String>, String> {
+    let created = init_agent_skills_dirs(&PathBuf::from(&destination))?;
+    Ok(created
+        .into_iter()
+        .map(|p| p.to_string_lossy().into_owned())
+        .collect())
 }
 
 #[tauri::command]

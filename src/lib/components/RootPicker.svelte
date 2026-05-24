@@ -1,6 +1,11 @@
 <script lang="ts">
   import { open } from "@tauri-apps/plugin-dialog";
+  import { initAgentSkillsFolders } from "../api";
   import { chooseScanRoot, runScan, scanState, stopScan } from "../stores/scan.svelte";
+  import { setError } from "../stores/ui.svelte";
+
+  let initLoading = $state(false);
+  let initMessage = $state<string | null>(null);
 
   async function pickRoot() {
     const selected = await open({
@@ -10,6 +15,29 @@
     });
     if (selected && typeof selected === "string") {
       await chooseScanRoot(selected);
+    }
+  }
+
+  async function initAgentSkills() {
+    const selected = await open({
+      directory: true,
+      multiple: false,
+      title: "Choose folder for agent skills directories",
+    });
+    if (!selected || typeof selected !== "string") return;
+
+    initLoading = true;
+    initMessage = null;
+    setError(null);
+    try {
+      const created = await initAgentSkillsFolders(selected);
+      initMessage = `Created ${created.length} folder(s) under ${selected}`;
+    } catch (e) {
+      const message = e instanceof Error ? e.message : String(e);
+      setError(message);
+      initMessage = null;
+    } finally {
+      initLoading = false;
     }
   }
 </script>
@@ -59,6 +87,24 @@
   {/if}
 </section>
 
+<section class="panel-section">
+  <h2>Agent skills folders</h2>
+  <p class="hint">
+    Create <code>.claude/skills</code> and <code>.agents/skills</code> under a folder
+  </p>
+  <button
+    type="button"
+    class="primary init-btn"
+    disabled={initLoading}
+    onclick={initAgentSkills}
+  >
+    {initLoading ? "Creating…" : "Initialize folders"}
+  </button>
+  {#if initMessage}
+    <p class="success small" role="status">{initMessage}</p>
+  {/if}
+</section>
+
 <style>
   .hint {
     margin: 0 0 0.75rem;
@@ -98,5 +144,18 @@
   .small {
     font-size: 0.75rem;
     margin: 0.5rem 0 0;
+  }
+
+  .init-btn {
+    width: 100%;
+  }
+
+  .success {
+    color: var(--success);
+  }
+
+  code {
+    font-family: var(--font-mono);
+    font-size: 0.85em;
   }
 </style>

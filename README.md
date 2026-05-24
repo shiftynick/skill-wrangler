@@ -213,6 +213,20 @@ npm run check
 cd src-tauri && cargo test
 ```
 
+### Local install
+
+Build a release binary and copy it to `~/.local/bin` (add that directory to your `PATH` if needed):
+
+```powershell
+# Windows
+.\scripts\install-local.ps1
+```
+
+```bash
+# macOS / Linux
+./scripts/install-local.sh
+```
+
 ---
 
 ## Roadmap

@@ -59,3 +59,7 @@ export async function readSkillFile(
 ): Promise<FileContentResult> {
   return invoke("read_skill_file_command", { path, maxBytes });
 }
+
+export async function initAgentSkillsFolders(destination: string): Promise<string[]> {
+  return invoke("init_agent_skills_folders", { destination });
+}
